@@ -1,58 +1,743 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="utf-8" />
-  <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#4e54c8" />
-  <meta
-    name="description"
-    content="Trò chơi giải đố realtime với Firebase"
-  />
-  <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
-  <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
-  <title>Quiz Game Realtime</title>
-  <!-- Font Awesome cho biểu tượng -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-  <!-- Font chữ Google -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
-  <style>
-    * {
-      box-sizing: border-box;
-    }
-    
-    body {
-      margin: 0;
-      padding: 0;
-      font-family: 'Nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-        'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-        sans-serif;
-      -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
-      background: linear-gradient(135deg, #4e54c8, #8f94fb);
-      background-attachment: fixed;
-      min-height: 100vh;
-      color: #333;
-    }
-    
-    #root {
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-    }
-    
-    /* Animation cho nền gradient */
-    @keyframes gradient {
-      0% { background-position: 0% 50%; }
-      50% { background-position: 100% 50%; }
-      100% { background-position: 0% 50%; }
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trò chơi giải đố online</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        /* Animation classes */
+        .fade-in { animation: fadeIn 0.3s ease; }
+        .slide-up { animation: slideUp 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        
+        /* Transition effects */
+        .btn-hover { transition: all 0.2s ease; }
+        .btn-hover:hover { transform: translateY(-2px); box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
+        .btn-active:active { transform: scale(0.95); }
+        
+        /* Custom scrollbar */
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #888; border-radius: 3px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #555; }
+        
+        /* Responsive layout */
+        @media (max-width: 640px) {
+            .mobile-stack { flex-direction: column; }
+            .mobile-full { width: 100% !important; }
+        }
+    </style>
 </head>
-<body>
-  <noscript>Bạn cần bật JavaScript để chạy ứng dụng này.</noscript>
-  <div id="root"></div>
+<body class="bg-gradient-to-br from-blue-50 to-purple-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Start Screen -->
+        <div id="start-screen" class="screen active fade-in">
+            <div class="max-w-md mx-auto bg-white rounded-2xl shadow-lg overflow-hidden p-8 text-center">
+                <img src="https://placehold.co/300x100?text=Câu+Đố+Vui" alt="Logo trò chơi giải đố nhiều màu sắc với hình bóng đèn sáng tạo" class="mx-auto mb-6 rounded-lg shadow-sm">
+                <h1 class="text-3xl font-bold text-gray-800 mb-4">Chào mừng đến với<br><span class="text-purple-600">Trò Chơi Giải Đố</span></h1>
+                <p class="text-gray-600 mb-8">Chọn vai trò của bạn để bắt đầu cuộc phiêu lưu trí tuệ!</p>
+                
+                <div class="space-y-4">
+                    <button onclick="showRoleLogin('host')" class="role-btn btn-hover btn-active w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold py-3 px-4 rounded-xl transition-all duration-300">
+                        <i class="fas fa-crown mr-2"></i> Máy chủ
+                    </button>
+                    <button onclick="showRoleLogin('player')" class="role-btn btn-hover btn-active w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold py-3 px-4 rounded-xl transition-all duration-300">
+                        <i class="fas fa-user-alt mr-2"></i> Máy con
+                    </button>
+                    <button onclick="loginAsViewer()" class="role-btn btn-hover btn-active w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold py-3 px-4 rounded-xl transition-all duration-300">
+                        <i class="fas fa-eye mr-2"></i> Máy khách
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Host Login Screen -->
+        <div id="host-login-screen" class="screen">
+            <div class="max-w-md mx-auto bg-white rounded-2xl shadow-lg overflow-hidden p-8 slide-up">
+                <h2 class="text-xl font-bold text-gray-800 mb-6 text-center"><i class="fas fa-crown text-purple-600 mr-2"></i>Đăng nhập Máy chủ</h2>
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="host-name">
+                        <i class="fas fa-user-circle text-gray-500 mr-1"></i> Tên máy chủ
+                    </label>
+                    <input type="text" id="host-name" class="shadow appearance-none border rounded-lg w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-300" placeholder="Nhập tên máy chủ">
+                </div>
+                <div class="mb-6">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="host-password">
+                        <i class="fas fa-key text-gray-500 mr-1"></i> Mật khẩu
+                    </label>
+                    <input type="password" id="host-password" class="shadow appearance-none border rounded-lg w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-300" value="12345678" placeholder="Nhập mật khẩu">
+                </div>
+                <div class="flex items-center justify-between">
+                    <button onclick="goToStart()" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-300 btn-hover btn-active">
+                        <i class="fas fa-arrow-left mr-1"></i> Quay lại
+                    </button>
+                    <button onclick="loginAsHost()" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-300 btn-hover btn-active">
+                        <i class="fas fa-sign-in-alt mr-1"></i> Đăng nhập
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Player Login Screen -->
+        <div id="player-login-screen" class="screen">
+            <div class="max-w-md mx-auto bg-white rounded-2xl shadow-lg overflow-hidden p-8 slide-up">
+                <h2 class="text-xl font-bold text-gray-800 mb-6 text-center"><i class="fas fa-user-alt text-blue-600 mr-2"></i>Đăng nhập Máy con</h2>
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="player-name">
+                        <i class="fas fa-user-circle text-gray-500 mr-1"></i> Tên máy con
+                    </label>
+                    <input type="text" id="player-name" class="shadow appearance-none border rounded-lg w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-300" placeholder="Nhập tên của bạn">
+                </div>
+                <div class="mb-6">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="player-password">
+                        <i class="fas fa-key text-gray-500 mr-1"></i> Mật khẩu từ máy chủ
+                    </label>
+                    <input type="password" id="player-password" class="shadow appearance-none border rounded-lg w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-300" placeholder="Nhập mật khẩu phòng">
+                </div>
+                <div class="flex items-center justify-between">
+                    <button onclick="goToStart()" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-300 btn-hover btn-active">
+                        <i class="fas fa-arrow-left mr-1"></i> Quay lại
+                    </button>
+                    <button onclick="loginAsPlayer()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 btn-hover btn-active">
+                        <i class="fas fa-sign-in-alt mr-1"></i> Đăng nhập
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Host Screen -->
+        <div id="host-screen" class="screen">
+            <div class="bg-white rounded-2xl shadow-lg overflow-hidden p-6 mb-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-bold text-gray-800"><i class="fas fa-crown text-purple-600 mr-2"></i>Bảng điều khiển</h2>
+                    <div class="flex items-center space-x-3">
+                        <span class="text-sm text-gray-600">Xin chào, <span id="host-display-name" class="font-bold text-purple-600"></span></span>
+                        <button onclick="toggleSettings()" class="text-gray-500 hover:text-purple-600">
+                            <i class="fas fa-cog"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Settings Panel (Hidden by default) -->
+                <div id="settings-panel" class="hidden bg-gray-100 rounded-lg p-4 mb-6">
+                    <h3 class="font-bold text-gray-800 mb-3"><i class="fas fa-sliders-h text-purple-600 mr-2"></i>Cài đặt</h3>
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2">
+                            <i class="fas fa-key text-purple-600 mr-1"></i> Thay đổi mật khẩu máy chủ
+                        </label>
+                        <div class="flex">
+                            <input type="password" id="new-host-password" class="flex-1 shadow appearance-none border rounded-l-lg py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-300" placeholder="Mật khẩu mới">
+                            <button onclick="changeHostPassword()" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-r-lg focus:outline-none focus:ring-2 focus:ring-purple-300 btn-hover btn-active">
+                                <i class="fas fa-save"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2">
+                            <i class="fas fa-users text-purple-600 mr-1"></i> Số lượng máy con tối đa
+                        </label>
+                        <select id="max-players" class="shadow appearance-none border rounded-lg w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-300">
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                            <option value="4">4</option>
+                            <option value="5">5</option>
+                            <option value="10">10</option>
+                            <option value="20">20</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Game Controls -->
+                <div class="grid md:grid-cols-2 gap-6 mb-6">
+                    <div class="bg-gray-100 p-4 rounded-lg">
+                        <h3 class="font-bold text-gray-800 mb-2"><i class="fas fa-key text-purpleS-600 mr-2"></i>Thông tin phòng</h3>
+                        
+                        <div class="mb-3">
+                            <label class="block text-gray-700 text-sm font-bold mb-1">ID Phòng:</label>
+                            <div class="flex items-center">
+                                <input type="text" id="room-id-display" class="flex-1 bg-gray-200 border border-gray-300 rounded-lg py-2 px-3 text-gray-700 text-sm" readonly>
+                                <button onclick="copyRoomId()" class="ml-2 bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-3 rounded-lg btn-hover btn-active">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="block text-gray-700 text-sm font-bold mb-1">Mật khẩu máy con:</label>
+                            <div class="flex">
+                                <input type="text" id="room-password" class="flex-1 bg-gray-200 border border-gray-300 rounded-l-lg py-2 px-3 text-gray-700 text-sm" readonly>
+                                <button onclick="generateRoomPassword()" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-3 rounded-r-lg btn-hover btn-active">
+                                    <i class="fas fa-sync-alt"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-gray-100 p-4 rounded-lg">
+                        <h3 class="font-bold text-gray-800 mb-2"><i class="fas fa-question-circle text-purple-600 mr-2"></i>Quản lý câu hỏi</h3>
+                        
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-1" for="question-input">Nhập câu hỏi:</label>
+                            <textarea id="question-input" rows="2" class="shadow appearance-none border rounded-lg w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-300" placeholder="Nhập câu hỏi..."></textarea>
+                        </div>
+                        
+                        <div class="flex justify-end space-x-2">
+                            <button onclick="clearQuestion()" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-300 btn-hover btn-active">
+                                <i class="fas fa-trash-alt mr-1"></i> Xóa
+                            </button>
+                            <button onclick="sendQuestion()" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-300 btn-hover btn-active">
+                                <i class="fas fa-paper-plane mr-1"></i> Gửi
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Answers Section -->
+                <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                    <div class="bg-gray-100 px-4 py-3 border-b border-gray-200">
+                        <h3 class="font-bold text-gray-800"><i class="fas fa-reply text-purple-600 mr-2"></i>Câu trả lời từ máy con</h3>
+                    </div>
+                    <div id="answers-container" class="divide-y divide-gray-200 custom-scrollbar max-h-96 overflow-y-auto">
+                        <div class="p-4 text-center text-gray-500">
+                            <i class="fas fa-inbox text-3xl mb-2 text-gray-300"></i>
+                            <p>Chưa có câu trả lời nào</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Player Screen -->
+        <div id="player-screen" class="screen">
+            <div class="bg-white rounded-2xl shadow-lg overflow-hidden p-6 mb-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-bold text-gray-800"><i class="fas fa-user-alt text-blue-600 mr-2"></i>Máy con</h2>
+                    <div class="text-sm text-gray-600">Xin chào, <span id="player-display-name" class="font-bold text-blue-600"></span></div>
+                </div>
+
+                <div class="bg-blue-50 border border-blue-100 rounded-lg p-4 mb-6">
+                    <div class="flex items-center mb-2">
+                        <div class="bg-blue-100 rounded-full p-2 mr-3">
+                            <i class="fas fa-question-circle text-blue-600"></i>
+                        </div>
+                        <h3 class="font-bold text-gray-800">Câu hỏi hiện tại:</h3>
+                    </div>
+                    <p id="current-question" class="text-gray-700 italic ml-11">Chưa có câu hỏi nào từ máy chủ...</p>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="player-answer">
+                        <i class="fas fa-edit text-blue-600 mr-1"></i> Câu trả lời của bạn:
+                    </label>
+                    <textarea id="player-answer" rows="3" class="shadow appearance-none border rounded-lg w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-300" placeholder="Nhập câu trả lời của bạn..."></textarea>
+                </div>
+
+                <button onclick="submitAnswer()" id="submit-answer-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 btn-hover btn-active disabled:opacity-50 disabled:cursor-not-allowed">
+                    <i class="fas fa-paper-plane mr-2"></i> Gửi câu trả lời
+                </button>
+            </div>
+        </div>
+
+        <!-- Viewer Screen -->
+        <div id="viewer-screen" class="screen">
+            <div class="bg-white rounded-2xl shadow-lg overflow-hidden p-6 mb-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-bold text-gray-800"><i class="fas fa-eye text-green-600 mr-2"></i>Máy khách</h2>
+                    <div class="text-sm text-gray-600">Bạn đang xem</div>
+                </div>
+
+                <div class="bg-green-50 border border-green-100 rounded-lg p-4 mb-6">
+                    <div class="flex items-center mb-2">
+                        <div class="bg-green-100 rounded-full p-2 mr-3">
+                            <i class="fas fa-question-circle text-green-600"></i>
+                        </div>
+                        <h3 class="font-bold text-gray-800">Câu hỏi hiện tại:</h3>
+                    </div>
+                    <p id="viewer-question" class="text-gray-700 italic ml-11">Chưa có câu hỏi nào từ máy chủ...</p>
+                </div>
+
+                <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                    <div class="bg-gray-100 px-4 py-3 border-b border-gray-200">
+                        <h3 class="font-bold text-gray-800"><i class="fas fa-users text-green-600 mr-2"></i>Câu trả lời từ máy con</h3>
+                    </div>
+                    <div id="viewer-answers-container" class="divide-y divide-gray-200 custom-scrollbar max-h-96 overflow-y-auto">
+                        <div class="p-4 text-center text-gray-500">
+                            <i class="fas fa-inbox text-3xl mb-2 text-gray-300"></i>
+                            <p>Chưa có câu trả lời nào</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyC_4i5AEs6XHAA9ZCkiFQG8_1ygyWNU6Vc",
+            authDomain: "trochoionline-37786.firebaseapp.com",
+            projectId: "trochoionline-37786",
+            storageBucket: "trochoionline-37786.firebasestorage.app",
+            messagingSenderId: "743420798351",
+            appId: "1:743420798351:web:3f0ea96ff17e868f8297fa"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+
+        // Game state
+        let currentUserRole = null;
+        let currentRoomId = null;
+        let currentQuestionId = null;
+        let currentUserId = null;
+        let hasLiked = {};
+        let currentHostPassword = "12345678"; // Default password as requested
+
+        // DOM Elements
+        const screens = {
+            start: document.getElementById('start-screen'),
+            hostLogin: document.getElementById('host-login-screen'),
+            playerLogin: document.getElementById('player-login-screen'),
+            host: document.getElementById('host-screen'),
+            player: document.getElementById('player-screen'),
+            viewer: document.getElementById('viewer-screen')
+        };
+
+        // Helper functions
+        function showScreen(screenId) {
+            Object.values(screens).forEach(screen => {
+                screen.classList.remove('active');
+            });
+            screens[screenId].classList.add('active');
+        }
+
+        function showRoleLogin(role) {
+            if (role === 'host') {
+                showScreen('hostLogin');
+            } else if (role === 'player') {
+                showScreen('playerLogin');
+            }
+        }
+
+        function goToStart() {
+            currentUserRole = null;
+            currentRoomId = null;
+            currentQuestionId = null;
+            showScreen('start');
+        }
+
+        function toggleSettings() {
+            const settingsPanel = document.getElementById('settings-panel');
+            settingsPanel.classList.toggle('hidden');
+        }
+
+        function copyRoomId() {
+            const roomIdInput = document.getElementById('room-id-display');
+            roomIdInput.select();
+            document.execCommand('copy');
+            
+            // Show toast notification (you can implement a proper toast)
+            alert('Đã sao chép ID phòng vào clipboard!');
+        }
+
+        function generateRoomPassword() {
+            const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+            let password = '';
+            for (let i = 0; i < 8; i++) {
+                password += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            document.getElementById('room-password').value = password;
+            updateRoomPassword(password);
+        }
+
+        function updateRoomPassword(password) {
+            if (currentRoomId) {
+                db.collection('rooms').doc(currentRoomId).update({
+                    password: password
+                }).then(() => {
+                    console.log('Room password updated');
+                }).catch((error) => {
+                    console.error('Error updating room password:', error);
+                });
+            }
+        }
+
+        function clearQuestion() {
+            document.getElementById('question-input').value = '';
+        }
+
+        // Host functions
+        async function loginAsHost() {
+            const name = document.getElementById('host-name').value.trim();
+            const password = document.getElementById('host-password').value;
+            
+            if (!name) {
+                alert('Vui lòng nhập tên máy chủ');
+                return;
+            }
+            
+            // Check password
+            if (password !== currentHostPassword) {
+                alert('Mật khẩu máy chủ không đúng');
+                return;
+            }
+            
+            try {
+                // Create anonymous user in Firebase Auth (for authentication state)
+                await auth.signInAnonymously();
+                
+                // Create room in Firestore
+                const roomRef = await db.collection('rooms').add({
+                    hostName: name,
+                    password: '123456', // Default player password
+                    maxPlayers: parseInt(document.getElementById('max-players').value),
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    hostPassword: currentHostPassword // Store host password
+                });
+                
+                currentRoomId = roomRef.id;
+                currentUserRole = 'host';
+                currentUserId = name; // Using name as ID for simplicity
+                
+                // Set up realtime listeners
+                setupRoomListeners();
+                
+                // Update UI
+                document.getElementById('host-display-name').textContent = name;
+                document.getElementById('room-id-display').value = currentRoomId;
+                document.getElementById('room-password').value = '123456';
+                showScreen('host');
+            } catch (error) {
+                console.error('Error creating room:', error);
+                alert('Có lỗi xảy ra khi tạo phòng: ' + error.message);
+            }
+        }
+
+        function changeHostPassword() {
+            const newPassword = document.getElementById('new-host-password').value.trim();
+            
+            if (!newPassword) {
+                alert('Vui lòng nhập mật khẩu mới');
+                return;
+            }
+            
+            if (newPassword.length < 6) {
+                alert('Mật khẩu phải có ít nhất 6 ký tự');
+                return;
+            }
+            
+            currentHostPassword = newPassword;
+            
+            // Update in Firestore if room exists
+            if (currentRoomId && currentUserRole === 'host') {
+                db.collection('rooms').doc(currentRoomId).update({
+                    hostPassword: newPassword
+                }).then(() => {
+                    alert('Đã thay đổi mật khẩu máy chủ thành công!');
+                    document.getElementById('new-host-password').value = '';
+                }).catch(error => {
+                    console.error('Error updating host password:', error);
+                    alert('Có lỗi khi cập nhật mật khẩu');
+                });
+            } else {
+                alert('Đã thay đổi mật khẩu máy chủ (áp dụng cho lần đăng nhập tiếp theo)');
+                document.getElementById('new-host-password').value = '';
+            }
+        }
+
+        function setupRoomListeners() {
+            if (!currentRoomId) return;
+
+            // Listen for current question
+            db.collection('questions')
+                .where('roomId', '==', currentRoomId)
+                .orderBy('createdAt', 'desc')
+                .limit(1)
+                .onSnapshot(snapshot => {
+                    if (!snapshot.empty) {
+                        const question = snapshot.docs[0].data();
+                        currentQuestionId = snapshot.docs[0].id;
+                        
+                        // Update question display for all roles
+                        document.getElementById('question-input').value = question.text;
+                        document.getElementById('current-question').textContent = question.text;
+                        document.getElementById('viewer-question').textContent = question.text;
+                        
+                        // Enable answer button for players
+                        document.getElementById('submit-answer-btn').disabled = false;
+                        
+                        // Set up answers listener for this question
+                        setupAnswersListener();
+                    } else {
+                        // No questions yet
+                        currentQuestionId = null;
+                        document.getElementById('current-question').textContent = 'Chưa có câu hỏi nào từ máy chủ...';
+                        document.getElementById('viewer-question').textContent = 'Chưa có câu hỏi nào từ máy chủ...';
+                        document.getElementById('submit-answer-btn').disabled = true;
+                    }
+                });
+        }
+
+        function setupAnswersListener() {
+            if (!currentRoomId || !currentQuestionId) return;
+
+            // Clear previous answers
+            document.getElementById('answers-container').innerHTML = '';
+            document.getElementById('viewer-answers-container').innerHTML = '';
+            
+            // Listen for answers to the current question
+            if (currentUserRole === 'host') {
+                db.collection('answers')
+                    .where('questionId', '==', currentQuestionId)
+                    .orderBy('timestamp', 'asc')
+                    .onSnapshot(snapshot => {
+                        const container = document.getElementById('answers-container');
+                        updateAnswersDisplay(container, snapshot);
+                    });
+            } else if (currentUserRole === 'viewer') {
+                db.collection('answers')
+                    .where('questionId', '==', currentQuestionId)
+                    .orderBy('timestamp', 'asc')
+                    .onSnapshot(snapshot => {
+                        const container = document.getElementById('viewer-answers-container');
+                        updateAnswersDisplay(container, snapshot);
+                    });
+            }
+        }
+
+        function updateAnswersDisplay(container, snapshot) {
+            if (snapshot.empty) {
+                container.innerHTML = `
+                    <div class="p-4 text-center text-gray-500">
+                        <i class="fas fa-inbox text-3xl mb-2 text-gray-300"></i>
+                        <p>Chưa có câu trả lời nào</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = '';
+            
+            snapshot.forEach(doc => {
+                const answer = doc.data();
+                const answerElement = document.createElement('div');
+                answerElement.className = 'p-4 hover:bg-gray-50 transition-colors';
+                
+                if (currentUserRole === 'host') {
+                    answerElement.innerHTML = `
+                        <div class="flex justify-between items-start">
+                            <div class="flex-1">
+                                <div class="font-bold text-purple-600">${answer.playerName}</div>
+                                <p class="text-gray-700">${answer.text}</p>
+                            </div>
+                            <div class="text-right ml-4">
+                                <span class="inline-block bg-gray-100 text-gray-800 text-sm px-2 py-1 rounded">
+                                    <i class="fas fa-heart text-red-500 mr-1"></i>
+                                    ${answer.likes || 0}
+                                </span>
+                            </div>
+                        </div>
+                    `;
+                } else { // Viewer
+                    answerElement.innerHTML = `
+                        <div class="flex justify-between items-start">
+                            <div class="flex-1">
+                                <div class="font-bold text-blue-600">${answer.playerName}</div>
+                                <p class="text-gray-700">${answer.text}</p>
+                            </div>
+                            <div class="text-right ml-4">
+                                <button onclick="likeAnswer('${doc.id}', '${answer.playerId}')" class="like-btn btn-hover btn-active bg-gray-100 hover:bg-gray-200 text-gray-800 text-sm px-3 py-1 rounded-lg ${hasLiked[answer.playerId] ? 'opacity-50 cursor-not-allowed' : ''}">
+                                    <i class="fas fa-thumbs-up ${hasLiked[answer.playerId] ? 'text-blue-600' : 'text-gray-500'}"></i>
+                                    Thích
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                container.appendChild(answerElement);
+            });
+        }
+
+        async function sendQuestion() {
+            const questionText = document.getElementById('question-input').value.trim();
+            
+            if (!questionText) {
+                alert('Vui lòng nhập câu hỏi');
+                return;
+            }
+            
+            try {
+                // Create new question in Firestore
+                await db.collection('questions').add({
+                    text: questionText,
+                    roomId: currentRoomId,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                // Clear previous likes tracking
+                hasLiked = {};
+                
+                // Show success (already handled by realtime listener)
+            } catch (error) {
+                console.error('Error sending question:', error);
+                alert('Có lỗi khi gửi câu hỏi: ' + error.message);
+            }
+        }
+
+        // Player functions
+        async function loginAsPlayer() {
+            const name = document.getElementById('player-name').value.trim();
+            const password = document.getElementById('player-password').value;
+            
+            if (!name) {
+                alert('Vui lòng nhập tên máy con');
+                return;
+            }
+            
+            if (!password) {
+                alert('Vui lòng nhập mật khẩu phòng');
+                return;
+            }
+            
+            try {
+                // Find room with matching password
+                const roomsSnapshot = await db.collection('rooms')
+                    .where('password', '==', password)
+                    .limit(1)
+                    .get();
+                
+                if (roomsSnapshot.empty) {
+                    alert('Mật khẩu phòng không đúng');
+                    return;
+                }
+                
+                const room = roomsSnapshot.docs[0].data();
+                currentRoomId = roomsSnapshot.docs[0].id;
+                
+                // Check player count (basic check, would need improvement for production)
+                const playersCount = await db.collection('answers')
+                    .where('roomId', '==', currentRoomId)
+                    .get()
+                    .then(snap => snap.size);
+                
+                if (playersCount >= (room.maxPlayers || 10)) {
+                    alert('Phòng đã đầy, không thể tham gia');
+                    return;
+                }
+                
+                // Create anonymous user in Firebase Auth (for authentication state)
+                await auth.signInAnonymously();
+                
+                currentUserRole = 'player';
+                currentUserId = name; // Using name as ID for simplicity
+                
+                // Set up realtime listeners
+                setupRoomListeners();
+                
+                // Update UI
+                document.getElementById('player-display-name').textContent = name;
+                document.getElementById('submit-answer-btn').disabled = true;
+                showScreen('player');
+            } catch (error) {
+                console.error('Error joining as player:', error);
+                alert('Có lỗi khi tham gia phòng: ' + error.message);
+            }
+        }
+
+        async function submitAnswer() {
+            const answerText = document.getElementById('player-answer').value.trim();
+            
+            if (!answerText) {
+                alert('Vui lòng nhập câu trả lời');
+                return;
+            }
+            
+            if (!currentQuestionId) {
+                alert('Không có câu hỏi hiện tại để trả lời');
+                return;
+            }
+            
+            try {
+                await db.collection('answers').add({
+                    text: answerText,
+                    playerId: currentUserId,
+                    playerName: document.getElementById('player-display-name').textContent,
+                    questionId: currentQuestionId,
+                    roomId: currentRoomId,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                    likes: 0
+                });
+                
+                document.getElementById('player-answer').value = '';
+                document.getElementById('submit-answer-btn').disabled = true;
+                
+                alert('Đã gửi câu trả lời thành công!');
+            } catch (error) {
+                console.error('Error submitting answer:', error);
+                alert('Có lỗi khi gửi câu trả lời: ' + error.message);
+            }
+        }
+
+        // Viewer functions
+        async function loginAsViewer() {
+            try {
+                // Create anonymous user in Firebase Auth (for authentication state)
+                await auth.signInAnonymously();
+                
+                currentUserRole = 'viewer';
+                currentUserId = 'viewer_' + Math.random().toString(36).substr(2, 9);
+                
+                // Set up realtime listeners
+                setupRoomListeners();
+                
+                // Update UI
+                showScreen('viewer');
+            } catch (error) {
+                console.error('Error joining as viewer:', error);
+                alert('Có lỗi khi tham gia với vai trò người xem: ' + error.message);
+            }
+        }
+
+        async function likeAnswer(answerId, playerId) {
+            if (hasLiked[playerId]) {
+                alert('Bạn đã Like cho người chơi này rồi!');
+                return;
+            }
+            
+            try {
+                // Record that this viewer has liked
+                hasLiked[playerId] = true;
+                
+                // Update answer likes count
+                const answerRef = db.collection('answers').doc(answerId);
+                await db.runTransaction(async (transaction) => {
+                    const answerDoc = await transaction.get(answerRef);
+                    if (!answerDoc.exists) {
+                        throw "Document does not exist!";
+                    }
+                    
+                    const newLikes = (answerDoc.data().likes || 0) + 1;
+                    transaction.update(answerRef, { likes: newLikes });
+                });
+            } catch (error) {
+                console.error('Error liking answer:', error);
+                alert('Có lỗi khi thực hiện Like: ' + error.message);
+            }
+        }
+
+        // Initialize (if needed)
+        document.addEventListener('DOMContentLoaded', () => {
+            // Any initialization code can go here
+        });
+    </script>
 </body>
 </html>
